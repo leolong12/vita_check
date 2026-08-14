@@ -1,0 +1,290 @@
+/* ========================================================================
+   animations.css —— 所有动画 keyframes 定义
+   核心原则：能用 CSS 实现的不写 JS，保证性能流畅
+
+   动画分四类：
+     1) 划掉动画（3 种）：   .anim-strike / .anim-marker / .anim-cloud
+     2) 入场 / 退场：       @keyframes enterSlide / exitCollapse
+     3) 按钮反馈 / Hover：  keyframes btnPop
+     4) 庆祝反馈：          +1 飘字、Combo
+   ======================================================================== */
+
+/* ======================================================================
+   一、划掉动画（用户可在设置中三选一）
+   每种动画作用于 .todo-text，配合 .completed 状态触发
+   ====================================================================== */
+
+/* ---------- 1) 经典删除线：伪元素 ::after 画线，width 0→100% ---------- */
+.anim-strike.todo-text::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 52%;
+    width: 0;
+    height: 2px;
+    background: var(--strike-color);
+    border-radius: 2px;
+    transition: width 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+    pointer-events: none;
+}
+
+.anim-strike.todo-text {
+    transition: color 0.5s ease;
+}
+
+.todo-item.completed .anim-strike.todo-text::after {
+    width: 100%;
+}
+
+/* ---------- 2) 马克笔涂划：倾斜半透明色块从左划到右 ----------
+   完全仿照 Samantha Ming - Not Fancy Checkbox 的写法：
+   用独立的 <span class="strike-through"> 真实 DOM 元素（而非伪元素），
+   通过给 .strike-through 加 .active 类触发 width 过渡。
+   真实 DOM 元素的类切换能稳定触发 transition，不受首次匹配规则的限制。
+*/
+.anim-marker .text-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.anim-marker .strike-through {
+    position: absolute;
+    top: 14%;
+    left: 0;
+    height: 70%;
+    width: 0;
+    background: var(--marker-color, var(--success));
+    opacity: .45;
+    transform: skewX(-10deg);
+    transition: width 0.4s ease-in-out, opacity 0.3s ease-in-out;
+    pointer-events: none;
+    border-radius: 2px;
+}
+
+/* 完成态：色块从左划到右（width 0 → 100%） */
+.todo-item.completed .anim-marker .strike-through.active {
+    width: 100%;
+}
+
+/* 完成时文字颜色变淡 */
+.anim-marker.todo-text {
+    transition: color 0.4s ease;
+}
+
+.todo-item.completed .anim-marker.todo-text {
+    color: var(--completed-text);
+}
+
+/* ---------- 3) 云朵庆贺：文字保留完成态，数朵小云升起淡出 ----------
+   完成时从行内飘出 4 朵小云（JS 插入 .cloud-puff），
+   文字本身保留并进入完成态，突出成就感而不消散。
+*/
+.anim-cloud.todo-text {
+    transition: color 0.4s ease, opacity 0.4s ease;
+}
+
+/* 云朵本体：三圆叠出云形（纯 CSS，无图片） */
+.cloud-puff {
+    position: absolute;
+    top: 2px;
+    width: 34px;
+    height: 20px;
+    background: var(--cloud-color, rgba(255, 255, 255, 0.95));
+    border-radius: 40px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 3;
+    animation: cloudRise 0.9s ease-out forwards;
+    animation-delay: var(--delay, 0s);
+}
+
+.cloud-puff::before,
+.cloud-puff::after {
+    content: "";
+    position: absolute;
+    background: inherit;
+    border-radius: 50%;
+}
+
+.cloud-puff::before {
+    width: 20px;
+    height: 20px;
+    top: -9px;
+    left: 7px;
+}
+
+.cloud-puff::after {
+    width: 14px;
+    height: 14px;
+    top: -5px;
+    right: 5px;
+}
+
+@keyframes cloudRise {
+    0% {
+        opacity: 0;
+        transform: translate(0, 12px) scale(0.5);
+    }
+    20% {
+        opacity: 0.9;
+    }
+    70% {
+        opacity: 0.55;
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--drift, 10px), -56px) scale(1.12);
+    }
+}
+
+/* ======================================================================
+   二、入场 / 退场 / Hover 交互动画
+   ====================================================================== */
+
+/* 新增入场：从上方滑入 + 轻微弹性回弹 */
+.todo-item.entering {
+    animation: enterSlide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes enterSlide {
+    0% {
+        opacity: 0;
+        transform: translateY(-24px) scale(0.95);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(4px) scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 删除退场：高度收缩 + 透明度淡出 */
+.todo-item.leaving {
+    animation: exitCollapse 0.45s cubic-bezier(0.55, 0, 0.55, 0.2) forwards;
+    pointer-events: none;
+}
+
+@keyframes exitCollapse {
+    0% {
+        opacity: 1;
+        max-height: 80px;
+        margin-bottom: 10px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+        transform: translateX(0);
+    }
+    60% {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+    100% {
+        opacity: 0;
+        max-height: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        transform: translateX(40px);
+    }
+}
+
+/* 按钮点击回弹 */
+.icon-btn:active,
+.tool-btn:active,
+.anim-option:active {
+    animation: btnPop 0.3s ease;
+}
+
+@keyframes btnPop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}
+
+/* ======================================================================
+   三、庆祝反馈动画
+   ====================================================================== */
+
+/* +1 成就飘字（向左上飘出，避开右上角浮动工具） */
+.combo-popup {
+    position: fixed;
+    top: 70px;
+    right: 60px;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--accent);
+    text-shadow: 0 2px 12px var(--accent-glow);
+    pointer-events: none;
+    z-index: 150;
+    animation: comboFloat 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.combo-popup.big {
+    font-size: 38px;
+}
+
+@keyframes comboFloat {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.4) rotate(-8deg);
+    }
+    25% {
+        opacity: 1;
+        transform: translateY(-10px) scale(1.2) rotate(3deg);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(-30px) scale(1) rotate(-2deg);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-80px) scale(0.8) rotate(0);
+    }
+}
+
+/* 设置面板内的预览动画（去框，与列表风格统一） */
+.preview-line {
+    display: block;
+    padding: 12px 4px;
+    margin-top: 10px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    font-size: 16px;
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.preview-line.completed {
+    color: var(--completed-text);
+    opacity: 0.6;
+}
+
+/* 输入框抖动（空值校验反馈） */
+.todo-input.shake {
+    animation: inputShake 0.4s ease;
+    border-color: var(--danger);
+}
+
+@keyframes inputShake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-8px); }
+    40%      { transform: translateX(8px); }
+    60%      { transform: translateX(-5px); }
+    80%      { transform: translateX(5px); }
+}
+
+/* 复选框勾选时的弹跳 */
+.todo-item.completed .todo-checkbox {
+    animation: checkPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes checkPop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}

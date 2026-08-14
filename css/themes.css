@@ -1,0 +1,134 @@
+/* ========================================================================
+   themes.css —— 主题配色变量（亮色 / 暗色 / 渐变）
+   通过 <html data-theme="..."> 切换，所有样式从 CSS 变量取值
+   ======================================================================== */
+
+/* ---------- 亮色主题（默认） ---------- */
+:root,
+[data-theme="light"] {
+    --bg-primary: #f5f7fa;
+    --bg-secondary: #ffffff;
+    --bg-elevated: #ffffff;
+    --bg-input: #ffffff;
+    --bg-hover: #f0f2f5;
+
+    --text-primary: #1a1a2e;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --text-on-accent: #ffffff;
+
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --accent-soft: rgba(99, 102, 241, 0.12);
+    --accent-glow: rgba(99, 102, 241, 0.4);
+
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+    --shadow-glow: 0 0 24px var(--accent-glow);
+
+    /* 渐变主题专属：背景渐变开关 */
+    --app-bg: var(--bg-primary);
+    --app-bg-image: none;
+
+    /* 完成态文字颜色 */
+    --completed-text: #9ca3af;
+    --strike-color: #ef4444;
+}
+
+/* ---------- 暗色主题 ---------- */
+[data-theme="dark"] {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-elevated: #243447;
+    --bg-input: #1e293b;
+    --bg-hover: #334155;
+
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-on-accent: #ffffff;
+
+    --accent: #818cf8;
+    --accent-hover: #6366f1;
+    --accent-soft: rgba(129, 140, 248, 0.16);
+    --accent-glow: rgba(129, 140, 248, 0.45);
+
+    --success: #34d399;
+    --danger: #f87171;
+    --warning: #fbbf24;
+
+    --border: #334155;
+    --border-strong: #475569;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 24px var(--accent-glow);
+
+    --app-bg: var(--bg-primary);
+    --app-bg-image: none;
+
+    --completed-text: #64748b;
+    --strike-color: #f87171;
+}
+
+/* ---------- 渐变主题 ---------- */
+[data-theme="gradient"] {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: rgba(255, 255, 255, 0.08);
+    --bg-elevated: rgba(255, 255, 255, 0.12);
+    --bg-input: rgba(255, 255, 255, 0.1);
+    --bg-hover: rgba(255, 255, 255, 0.16);
+
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.78);
+    --text-muted: rgba(255, 255, 255, 0.55);
+    --text-on-accent: #ffffff;
+
+    --accent: #f472b6;
+    --accent-hover: #ec4899;
+    --accent-soft: rgba(244, 114, 182, 0.2);
+    --accent-glow: rgba(244, 114, 182, 0.5);
+
+    --success: #34d399;
+    --danger: #fb7185;
+    --warning: #fbbf24;
+
+    --border: rgba(255, 255, 255, 0.15);
+    --border-strong: rgba(255, 255, 255, 0.25);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 30px var(--accent-glow);
+
+    /* 动态流动渐变背景 */
+    --app-bg: transparent;
+    --app-bg-image: linear-gradient(
+        -45deg,
+        #ee7752, #e73c7e, #23a6d5, #23d5ab
+    );
+
+    --completed-text: rgba(255, 255, 255, 0.45);
+    --strike-color: #fde047;
+}
+
+/* 渐变主题：背景动画 */
+[data-theme="gradient"] body {
+    background-size: 400% 400%;
+    animation: gradientShift 18s ease infinite;
+}
+
+@keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
