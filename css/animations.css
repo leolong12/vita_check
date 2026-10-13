@@ -3,14 +3,14 @@
    核心原则：能用 CSS 实现的不写 JS，保证性能流畅
 
    动画分四类：
-     1) 划掉动画（3 种）：   .anim-strike / .anim-marker / .anim-cloud
+     1) 划掉动画（2 种）：   .anim-strike / .anim-marker
      2) 入场 / 退场：       @keyframes enterSlide / exitCollapse
      3) 按钮反馈 / Hover：  keyframes btnPop
      4) 庆祝反馈：          +1 飘字、Combo
    ======================================================================== */
 
 /* ======================================================================
-   一、划掉动画（用户可在设置中三选一）
+   一、划掉动画（用户可在设置中二选一）
    每种动画作用于 .todo-text，配合 .completed 状态触发
    ====================================================================== */
 
@@ -73,69 +73,6 @@
 
 .todo-item.completed .anim-marker.todo-text {
     color: var(--completed-text);
-}
-
-/* ---------- 3) 云朵庆贺：文字保留完成态，数朵小云升起淡出 ----------
-   完成时从行内飘出 4 朵小云（JS 插入 .cloud-puff），
-   文字本身保留并进入完成态，突出成就感而不消散。
-*/
-.anim-cloud.todo-text {
-    transition: color 0.4s ease, opacity 0.4s ease;
-}
-
-/* 云朵本体：三圆叠出云形（纯 CSS，无图片） */
-.cloud-puff {
-    position: absolute;
-    top: 2px;
-    width: 34px;
-    height: 20px;
-    background: var(--cloud-color, rgba(255, 255, 255, 0.95));
-    border-radius: 40px;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
-    opacity: 0;
-    pointer-events: none;
-    z-index: 3;
-    animation: cloudRise 0.9s ease-out forwards;
-    animation-delay: var(--delay, 0s);
-}
-
-.cloud-puff::before,
-.cloud-puff::after {
-    content: "";
-    position: absolute;
-    background: inherit;
-    border-radius: 50%;
-}
-
-.cloud-puff::before {
-    width: 20px;
-    height: 20px;
-    top: -9px;
-    left: 7px;
-}
-
-.cloud-puff::after {
-    width: 14px;
-    height: 14px;
-    top: -5px;
-    right: 5px;
-}
-
-@keyframes cloudRise {
-    0% {
-        opacity: 0;
-        transform: translate(0, 12px) scale(0.5);
-    }
-    20% {
-        opacity: 0.9;
-    }
-    70% {
-        opacity: 0.55;
-    }
-    100% {
-        opacity: 0;
-        transform: translate(var(--drift, 10px), -56px) scale(1.12);
-    }
 }
 
 /* ======================================================================
@@ -287,88 +224,4 @@
     0%   { transform: scale(1); }
     50%  { transform: scale(1.3); }
     100% { transform: scale(1); }
-}
-
-/* 其余完成动画的稳定完成态：临时特效结束后仍可读、可恢复。 */
-.todo-item.completed .anim-ink .text,
-.todo-item.completed .anim-shatter .text,
-.todo-item.completed .anim-lightning .text,
-.todo-item.completed .anim-fold .text,
-.todo-item.completed .anim-particle .text,
-.todo-item.completed .anim-cloud .text {
-    text-decoration: line-through;
-    text-decoration-color: var(--strike-color);
-}
-.todo-item.animating .todo-text { opacity: 1; }
-.anim-ink .text-wrap::after {
-    content: "";
-    position: absolute;
-    inset: -5px -10px;
-    border-radius: 45% 55% 50% 40%;
-    background: radial-gradient(ellipse, var(--accent) 20%, var(--text-primary) 65%, transparent 72%);
-    transform: scale(0);
-    pointer-events: none;
-}
-.animating .anim-ink .text-wrap::after { animation: inkBloom 0.95s ease both; }
-.animating .anim-ink .text { animation: textVanish 0.95s ease both; }
-@keyframes inkBloom {
-    0% { transform: scale(0); opacity: 0.8; }
-    55% { transform: scale(1.15); opacity: 0.9; }
-    100% { transform: scale(1.3); opacity: 0; }
-}
-@keyframes textVanish {
-    0%, 15% { opacity: 1; }
-    45%, 70% { opacity: 0; }
-    100% { opacity: 1; }
-}
-.effect-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
-.effect-piece {
-    position: absolute;
-    top: 10%;
-    color: var(--piece-color);
-    animation: pieceFly 0.85s ease-out var(--delay) both;
-}
-.effect-shatter .effect-piece { color: var(--text-primary); font-weight: 500; }
-.effect-particle .effect-piece {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--piece-color);
-    box-shadow: 0 0 8px var(--piece-color);
-}
-.effect-cloud .effect-piece { font-size: 24px; color: var(--accent); }
-.animating .anim-shatter .text, .animating .anim-particle .text { animation: textVanish 1s ease both; }
-@keyframes pieceFly {
-    0% { opacity: 1; transform: translate(0, 0) rotate(0) scale(1); }
-    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--turn)) scale(0.3); }
-}
-.anim-lightning .text-wrap::after {
-    content: "";
-    position: absolute;
-    top: 35%;
-    left: -5%;
-    width: 110%;
-    height: 14px;
-    background: #fde047;
-    clip-path: polygon(0 40%, 35% 20%, 30% 50%, 75% 0, 62% 45%, 100% 40%, 60% 90%, 65% 55%, 25% 100%, 30% 65%);
-    filter: drop-shadow(0 0 6px #fbbf24);
-    opacity: 0;
-    pointer-events: none;
-}
-.animating .anim-lightning .text-wrap::after { animation: lightningSweep 0.65s ease both; }
-@keyframes lightningSweep {
-    0% { opacity: 0; transform: scaleX(0); transform-origin: left; }
-    20%, 45% { opacity: 1; transform: scaleX(1); }
-    60% { opacity: 0.2; }
-    70% { opacity: 1; }
-    100% { opacity: 0; }
-}
-.todo-item.animating:has(.anim-fold) { animation: paperFold 1s ease both; transform-origin: top center; }
-@keyframes paperFold {
-    0% { transform: perspective(500px) rotateX(0) scaleY(1); opacity: 1; }
-    45%, 60% { transform: perspective(500px) rotateX(-85deg) scaleY(0.1); opacity: 0; }
-    100% { transform: perspective(500px) rotateX(0) scaleY(1); opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-    .effect-layer { display: none; }
 }

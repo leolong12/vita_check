@@ -2,11 +2,11 @@
    app.js —— 主逻辑
    职责：
      1. 数据管理（todos 数组 + localStorage 同步）
-     2. 增删改查、筛选、统计
+     2. 增删改查、统计
      3. 渲染与 DOM 事件
      4. 主题、动画风格、音效的偏好应用
      5. 完成时的庆祝反馈编排（+1 / Combo）
-   依赖：window.Storage、window.Animations
+   依赖：window.Storage、window.Animations、window.CloudLayout
    ====================================================================== */
 
 (function (global) {
@@ -17,7 +17,7 @@
        ================================================================== */
     var state = {
         todos: [],                 // {id, text, completed, createdAt}
-        filter: "all",
+        editingId: null,
         prefs: Storage.getPrefs()  // {theme, animType, sound}
     };
 
@@ -157,7 +157,7 @@
             if (strike) {
                 strike.classList.toggle("active", todo.completed);
             }
-            var cb = node.querySelector(".todo-checkbox");
+            var cb = node.querySelector(".todo-text");
             if (cb) {
                 cb.setAttribute("aria-checked", todo.completed);
                 cb.setAttribute("aria-label", (todo.completed ? "恢复待办：" : "完成待办：") + todo.text);
@@ -165,26 +165,15 @@
         }
         // 仅刷新统计（不重渲染列表）
         renderStats();
-        refreshFilteredLater();
 
         if (todo.completed) {
-            // 完成反馈：+1 飘字 + 音效；云朵动画额外飘出云朵点缀（文字保留）
+            // 完成反馈：+1 飘字与音效，按当前偏好播放完成动画。
             Animations.popCombo();
             playCompleteSound();
-            if (node) { Animations.complete(node, state.prefs.animType); }
             if (state.todos.length && state.todos.every(function (t) { return t.completed; })) {
                 showToast("全部完成！今天的你很棒 ✨");
             }
-        } else if (node) {
-            Animations.clearEffect(node);
         }
-    }
-
-    // 完成反馈结束后，归入完成区或更新筛选视图。
-    function refreshFilteredLater() {
-        setTimeout(function () {
-            if (!dom.list.querySelector(".todo-edit-input")) { render(); }
-        }, 1100);
     }
 
     function deleteTodo(id) {
@@ -195,7 +184,6 @@
         state.todos = state.todos.filter(function (t) { return t.id !== id; });
         persist();
         renderStats();
-        Animations.clearEffect(node);
         node.classList.add("leaving");
         setTimeout(function () {
             if (dom.list.querySelector(".todo-edit-input")) { node.remove(); }
@@ -225,7 +213,6 @@
         }
         var nodes = dom.list.querySelectorAll(".todo-item.completed");
         nodes.forEach(function (n) {
-            Animations.clearEffect(n);
             n.classList.add("leaving");
         });
         state.todos = state.todos.filter(function (t) { return !t.completed; });
@@ -246,40 +233,23 @@
        五、渲染
        ================================================================== */
 
-    function getFiltered() {
-        return state.todos.filter(function (todo) {
-            return state.filter === "all" || (state.filter === "completed" ? todo.completed : !todo.completed);
-        }).sort(function (a, b) { return Number(a.completed) - Number(b.completed); });
-    }
-
     function render() {
         var focused = document.activeElement;
         var focusedItem = focused && focused.closest(".todo-item");
         var focusId = focusedItem && focusedItem.dataset.id;
-        var focusClass = focused && focused.classList.contains("todo-checkbox") ? ".todo-checkbox" : ".delete-btn";
-        var list = getFiltered();
+        var focusClass = focused && focused.classList.contains("todo-text") ? ".todo-text" : ".delete-btn";
+        var list = state.todos;
         // 清空
-        dom.list.querySelectorAll(".todo-item").forEach(Animations.clearEffect);
         dom.list.innerHTML = "";
 
-        var completedHeading = false;
         list.forEach(function (todo) {
-            if (state.filter === "all" && todo.completed && !completedHeading) {
-                var heading = document.createElement("li");
-                heading.className = "completed-heading";
-                heading.textContent = "已完成";
-                dom.list.appendChild(heading);
-                completedHeading = true;
-            }
             dom.list.appendChild(createTodoNode(todo));
         });
+        CloudLayout.arrange(dom.list);
 
         // 空状态
         dom.emptyState.classList.toggle("hidden", list.length > 0);
 
-        dom.emptyState.querySelector("p").textContent = state.filter === "completed"
-            ? "还没有已完成的任务，完成一件小事吧" : state.filter === "active"
-            ? "没有未完成的任务，休息一下吧" : "还没有待办，添加第一条吧";
         renderStats();
         if (focusId) {
             var replacement = dom.list.querySelector('[data-id="' + focusId + '"] ' + focusClass);
@@ -289,117 +259,77 @@
 
     function createTodoNode(todo) {
         var li = document.createElement("li");
-        li.className = "todo-item" + (todo.completed ? " completed" : "");
+        li.className = "todo-item cloud-item" + (todo.completed ? " completed" : "");
         li.dataset.id = todo.id;
-
-        // 复选框
-        var checkbox = document.createElement("button");
-        checkbox.type = "button";
-        checkbox.className = "todo-checkbox";
-        checkbox.setAttribute("role", "checkbox");
-        checkbox.setAttribute("aria-checked", todo.completed);
-        checkbox.setAttribute("aria-label", (todo.completed ? "恢复待办：" : "完成待办：") + todo.text);
-        checkbox.title = "切换完成状态；F2 编辑";
-
-        // 文本（承载划掉动画类）—— 用 text-wrap 包裹，
-        // 内部含 .text（文字）和 .strike-through（独立删除线 span，仿案例）
+        var word = document.createElement("div");
+        word.className = "cloud-word";
         var text = document.createElement("span");
         text.className = "todo-text";
+        text.tabIndex = 0;
+        text.setAttribute("role", "checkbox");
+        text.setAttribute("aria-checked", todo.completed);
+        text.setAttribute("aria-label", (todo.completed ? "恢复待办：" : "完成待办：") + todo.text);
+        text.title = "点击完成 · 双击或 F2 编辑";
         Animations.applyAnimClass(text, state.prefs.animType);
-
-        var textWrap = document.createElement("span");
-        textWrap.className = "text-wrap";
-
-        var textInner = document.createElement("span");
-        textInner.className = "text";
-        textInner.textContent = todo.text;
-
-        // 独立的删除线 span（仿 Samantha Ming 案例）
+        var wrap = document.createElement("span");
+        wrap.className = "text-wrap";
+        var content = document.createElement("span");
+        content.className = "text";
+        content.textContent = todo.text;
         var strike = document.createElement("span");
         strike.className = "strike-through" + (todo.completed ? " active" : "");
-
-        textWrap.appendChild(textInner);
-        textWrap.appendChild(strike);
-        text.appendChild(textWrap);
-
-        // 删除按钮
+        wrap.appendChild(content);
+        wrap.appendChild(strike);
+        text.appendChild(wrap);
         var delBtn = document.createElement("button");
         delBtn.className = "delete-btn";
-        delBtn.innerHTML = "&times;";
-        delBtn.title = "删除";
-        delBtn.setAttribute("aria-label", "删除该待办");
-
-        li.appendChild(checkbox);
-        li.appendChild(text);
-        li.appendChild(delBtn);
-
-        // ---- 事件 ----
-        // 完成切换：点击复选框 或 文字
-        checkbox.addEventListener("click", function () {
-            toggleTodo(todo.id);
-        });
+        delBtn.textContent = "×";
+        delBtn.title = "删除任务";
+        delBtn.setAttribute("aria-label", "删除待办：" + todo.text);
+        word.appendChild(text);
+        word.appendChild(delBtn);
+        li.appendChild(word);
         var clickTimer;
-        checkbox.addEventListener("keydown", function (e) {
-            if (e.key === "F2") { e.preventDefault(); enterEditMode(li, todo); }
-        });
-        text.addEventListener("click", function (e) {
-            if (li.querySelector(".todo-edit-input")) { return; }
+        text.addEventListener("click", function (event) {
             clearTimeout(clickTimer);
-            if (e.detail > 1) { return; }
+            if (event.detail > 1) { return; }
             clickTimer = setTimeout(function () {
-                if (li.isConnected) { toggleTodo(todo.id); }
+                if (li.isConnected && !document.getElementById("edit-dialog").open) { toggleTodo(todo.id); }
             }, 300);
         });
-        // 删除
-        delBtn.addEventListener("click", function (e) {
-            e.stopPropagation();
-            deleteTodo(todo.id);
-        });
-        // 双击文字 → 编辑
-        text.addEventListener("dblclick", function (e) {
-            e.stopPropagation();
+        text.addEventListener("dblclick", function (event) {
+            event.preventDefault();
             clearTimeout(clickTimer);
             enterEditMode(li, todo);
         });
-
+        text.addEventListener("keydown", function (event) {
+            if (event.key === " " || event.key === "Enter") {
+                event.preventDefault();
+                clearTimeout(clickTimer);
+                toggleTodo(todo.id);
+            } else if (event.key === "F2") {
+                event.preventDefault();
+                enterEditMode(li, todo);
+            } else if (event.key === "Delete") {
+                event.preventDefault();
+                deleteTodo(todo.id);
+            }
+        });
+        delBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+            clearTimeout(clickTimer);
+            deleteTodo(todo.id);
+        });
         return li;
     }
 
     function enterEditMode(li, todo) {
-        var todoText = li.querySelector(".todo-text");
-        var oldWrap = li.querySelector(".text-wrap");
-        if (!todoText || !oldWrap || li.querySelector(".todo-edit-input")) { return; }
-
-        var input = document.createElement("input");
-        input.className = "todo-edit-input";
-        input.type = "text";
+        state.editingId = todo.id;
+        var input = document.getElementById("edit-input");
         input.value = todo.text;
-        input.maxLength = 120;
-        input.setAttribute("aria-label", "编辑待办内容");
-
-        // 替换 text-wrap（保留 .todo-text 这个动画类容器）
-        todoText.replaceChild(input, oldWrap);
+        document.getElementById("edit-dialog").showModal();
         input.focus();
-        // 光标移到末尾
-        var len = input.value.length;
-        input.setSelectionRange(len, len);
-
-        var saved = false;
-        function save() {
-            if (saved || !input.parentNode) { return; }   // 已被替换
-            saved = true;
-            editTodo(todo.id, input.value);
-            dom.input.focus();
-        }
-        input.addEventListener("blur", save);
-        input.addEventListener("keydown", function (e) {
-            if (e.isComposing) { return; }
-            if (e.key === "Enter") { e.preventDefault(); input.blur(); }
-            else if (e.key === "Escape") {         // Esc 取消
-                input.value = todo.text;
-                input.blur();
-            }
-        });
+        input.select();
     }
 
     /* ---------------------- 统计渲染 ---------------------- */
@@ -607,6 +537,25 @@
        ================================================================== */
 
     function bindEvents() {
+        document.getElementById("shuffle-cloud").addEventListener("click", function () {
+            CloudLayout.shuffle(dom.list);
+        });
+        document.getElementById("edit-form").addEventListener("submit", function (event) {
+            event.preventDefault();
+            var value = document.getElementById("edit-input").value.trim();
+            if (!value) { document.getElementById("edit-input").focus(); return; }
+            var id = state.editingId;
+            document.getElementById("edit-dialog").close();
+            editTodo(id, value);
+        });
+        document.getElementById("edit-cancel").addEventListener("click", function () {
+            document.getElementById("edit-dialog").close();
+        });
+        document.getElementById("edit-delete").addEventListener("click", function () {
+            var id = state.editingId;
+            document.getElementById("edit-dialog").close();
+            deleteTodo(id);
+        });
         // 添加
         dom.form.addEventListener("submit", function (e) {
             e.preventDefault();
@@ -620,18 +569,6 @@
             addTodo(value);
             dom.input.value = "";
             dom.input.focus();
-        });
-
-        document.querySelectorAll(".filter-tab").forEach(function (button) {
-            button.addEventListener("click", function () {
-                state.filter = button.dataset.filter;
-                document.querySelectorAll(".filter-tab").forEach(function (tab) {
-                    var selected = tab.dataset.filter === state.filter;
-                    tab.classList.toggle("active", selected);
-                    tab.setAttribute("aria-pressed", selected);
-                });
-                render();
-            });
         });
 
         // 清除已完成
@@ -711,7 +648,7 @@
         state.prefs = Storage.getPrefs();
         // 演示入口仅为空列表提供示例，不覆盖已有任务。
         if (!state.todos.length && new URLSearchParams(global.location.search).get("demo") === "1") {
-            state.todos = ["写下今天最重要的一件事", "专注 25 分钟，推进手头的工作", "喝杯水，伸展一下", "打开设置，试试六种完成动画", "完成全部任务，给自己一个赞 ✨"].map(function (text) {
+            state.todos = ["读一本书", "好好吃饭", "散步", "整理房间", "学点新东西", "去看日落", "给家人打电话", "喝水", "早睡", "做一顿早餐", "记录灵感", "拉伸十分钟", "听一张专辑", "浇花", "完成设计稿", "写日记", "练习英语", "买束鲜花", "清理相册", "专注二十五分钟", "骑车", "给朋友写封信", "计划周末", "留点时间给自己"].map(function (text) {
                 return { id: genId(), text: text, completed: false, createdAt: Date.now() };
             });
         }
@@ -728,6 +665,7 @@
         buildMarkerColorOptions();
         bindEvents();
         render();
+        CloudLayout.observe(dom.list);
 
         if (!Storage.isAvailable()) {
             setTimeout(function () {

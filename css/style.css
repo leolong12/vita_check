@@ -754,27 +754,7 @@ input:checked + .slider::before {
     }
 }
 
-/* 完整 demo：筛选、添加和键盘焦点。 */
-.filter-tabs {
-    display: flex;
-    gap: 6px;
-    margin: 0 0 16px;
-}
-.filter-tab {
-    padding: 7px 14px;
-    border: none;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--text-secondary);
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease;
-}
-.filter-tab.active {
-    background: var(--accent-soft);
-    color: var(--accent);
-}
+/* 完整 demo：添加和键盘焦点。 */
 .add-btn {
     border: none;
     border-radius: 8px;

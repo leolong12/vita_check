@@ -5,67 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%236366f1%27/%3E%3Cpath d=%27M17 33l10 10 22-24%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E">
     <title>酷炫动画待办清单 · Vita Check</title>
-    <link rel="stylesheet" href="css/themes.css?v=6">
-    <link rel="stylesheet" href="css/style.css?v=6">
-    <link rel="stylesheet" href="css/animations.css?v=6">
+    <link rel="stylesheet" href="css/themes.css?v=7">
+    <link rel="stylesheet" href="css/style.css?v=7">
+    <link rel="stylesheet" href="css/animations.css?v=9">
+    <link rel="stylesheet" href="css/cloud.css?v=8">
 </head>
 <body>
-    <!-- 右上角浮动工具（边缘化、弱化显示） -->
-    <div class="floating-tools">
-        <button id="theme-btn" class="tool-btn" title="切换主题" aria-label="切换主题">🎨</button>
-        <button id="settings-btn" class="tool-btn" title="设置" aria-label="打开设置">⚙️</button>
+    <div class="topbar">
+        <a class="brand" href="./" aria-label="Vita Check 首页"><span class="brand-mark" aria-hidden="true">✳</span> Vita Check <span class="brand-edition">词云待办</span></a>
+        <div class="floating-tools">
+            <button id="theme-btn" class="tool-btn" title="切换主题" aria-label="切换主题">◐</button>
+            <button id="settings-btn" class="tool-btn" title="设置" aria-label="打开设置">⚙</button>
+        </div>
     </div>
-
     <main class="app" id="app">
-        <!-- 精简头部：弱化的进度信息 -->
         <header class="app-header">
-            <h1 class="app-title">Vita Check</h1>
-            <div class="progress-wrap">
-                <div class="progress-bar" id="progress-bar"></div>
+            <div class="heading-copy">
+                <p class="eyebrow">A LITTLE SPACE FOR YOUR DAY</p>
+                <h1 class="app-title">今天，想做点什么<span>？</span></h1>
+                <p class="app-subtitle">让每个想法找到位置，让每件小事慢慢完成。</p>
             </div>
-            <div class="stats-text">
-                <strong id="remaining-count">0</strong> 项待完成 · <span id="completion-rate">0%</span>
+            <div class="day-progress">
+                <div class="stats-text"><strong id="remaining-count">0</strong><span>件小事，等你完成</span></div>
+                <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+                <span class="progress-caption">今日进度 <span id="completion-rate">0%</span></span>
             </div>
         </header>
-
-        <!-- 待办列表（视觉主角，无边框无背景） -->
-        <section class="todo-list-section">
-            <nav class="filter-tabs" aria-label="待办筛选">
-                <button class="filter-tab active" data-filter="all" aria-pressed="true">全部</button>
-                <button class="filter-tab" data-filter="active" aria-pressed="false">未完成</button>
-                <button class="filter-tab" data-filter="completed" aria-pressed="false">已完成</button>
-            </nav>
-            <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
-
-            <!-- 空状态 -->
-            <div id="empty-state" class="empty-state">
-                <div class="empty-icon">📝</div>
-                <p>还没有待办，添加第一条吧</p>
+        <section class="todo-list-section" aria-label="待办词云">
+            <div class="cloud-toolbar">
+                <button class="shuffle-btn" id="shuffle-cloud"><span aria-hidden="true">⤨</span> 重新排布</button>
             </div>
+            <div class="cloud-canvas">
+                <ul id="todo-list" class="todo-list word-cloud" aria-label="待办任务"></ul>
+                <div id="empty-state" class="empty-state">
+                    <div class="empty-icon" aria-hidden="true">✳</div>
+                    <p>留一点空间，给你的第一个想法</p>
+                    <span>在下方写下一件想做的小事</span>
+                </div>
+            </div>
+            <div class="cloud-caption"><span class="live-dot" aria-hidden="true"></span> 每一个词，都是一件想做的事 <span class="caption-tip">点击完成 · 双击编辑</span></div>
         </section>
-
-        <!-- 添加入口（底部，弱化） -->
-        <section class="input-section">
+        <section class="input-section" aria-label="添加待办">
             <form id="todo-form" class="todo-form" autocomplete="off">
-                <span class="add-glyph" aria-hidden="true">+</span>
-                <input
-                    type="text"
-                    id="todo-input"
-                    class="todo-input"
-                    placeholder="添加新任务..."
-                    maxlength="120"
-                    aria-label="输入待办内容"
-                >
-                <button class="add-btn" type="submit">添加</button>
+                <span class="add-glyph" aria-hidden="true">＋</span>
+                <input type="text" id="todo-input" class="todo-input" placeholder="写下一件小事，让它加入词云…" maxlength="120" aria-label="输入待办内容">
+                <button class="add-btn" type="submit">加入词云 <span aria-hidden="true">↗</span></button>
             </form>
         </section>
-
-        <!-- 底部（弱化说明） -->
         <footer class="app-footer">
-            <span class="hint">双击 / F2 编辑 · 点击圆圈或文字完成</span>
+            <span class="hint">慢慢来，完成一件也是进步。</span>
             <button id="clear-completed" class="clear-btn" title="清除所有已完成项">清除已完成</button>
         </footer>
+        <p class="keyboard-hint">Tab 选择任务 · 空格完成 · F2 编辑 · Delete 删除</p>
     </main>
+    <dialog id="edit-dialog" class="edit-dialog" aria-labelledby="edit-title">
+        <form id="edit-form">
+            <p class="eyebrow">ONE LITTLE THING</p>
+            <h2 id="edit-title">编辑这件小事</h2>
+            <label for="edit-input">待办内容</label>
+            <input id="edit-input" class="todo-edit-input" maxlength="120" required autocomplete="off">
+            <div class="edit-actions">
+                <button type="button" id="edit-delete" class="clear-btn">删除任务</button>
+                <button type="button" id="edit-cancel" class="shuffle-btn">取消</button>
+                <button type="submit" class="add-btn">保存修改</button>
+            </div>
+        </form>
+    </dialog>
 
     <!-- 设置面板 -->
     <aside class="settings-panel" id="settings-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-label="设置面板" inert>
@@ -131,6 +136,7 @@
     <!-- CDN 与脚本 -->
     <script src="js/storage.js"></script>
     <script src="js/animations.js"></script>
+    <script src="js/cloud.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

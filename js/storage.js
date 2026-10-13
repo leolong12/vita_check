@@ -114,7 +114,7 @@
     var DEFAULT_PREFS = {
         theme:      "light",     // light / dark / gradient
         gradientColors: ["#6366f1", "#ec4899"], // 自定义渐变的两端颜色
-        animType:   "strike",    // strike / marker / cloud
+        animType:   "strike",    // strike / marker
         sound:      false,       // 是否开启音效
         markerColor: ""          // 马克笔划线颜色；空串 = 跟随主题 --success
     };
