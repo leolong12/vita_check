@@ -30,11 +30,13 @@
     }
 
     var HAS_LS = isAvailable();
+    var memory = {};
 
     /**
      * 通用读取：失败时回退到内存副本，保证流程不中断
      */
     function readRaw(key, fallback) {
+        if (Object.prototype.hasOwnProperty.call(memory, key)) { return memory[key]; }
         if (!HAS_LS) { return fallback; }
         try {
             var raw = global.localStorage.getItem(key);
@@ -50,6 +52,7 @@
      * 通用写入
      */
     function writeRaw(key, value) {
+        memory[key] = value;
         if (!HAS_LS) { return false; }
         try {
             global.localStorage.setItem(key, JSON.stringify(value));
@@ -64,6 +67,7 @@
      * 通用删除
      */
     function removeRaw(key) {
+        delete memory[key];
         if (!HAS_LS) { return; }
         try {
             global.localStorage.removeItem(key);
@@ -81,7 +85,21 @@
     function getTodos() {
         var list = readRaw(KEYS.TODOS, []);
         // 容错：确保返回数组
-        return Array.isArray(list) ? list : [];
+        if (!Array.isArray(list)) { return []; }
+        var seen = {};
+        return list.filter(function (todo) {
+            if (!todo || typeof todo.id !== "string" || !/^[a-zA-Z0-9_-]+$/.test(todo.id) ||
+                seen[todo.id] || typeof todo.text !== "string" || !todo.text.trim()) { return false; }
+            seen[todo.id] = true;
+            return true;
+        }).map(function (todo) {
+            return {
+                id: todo.id,
+                text: todo.text,
+                completed: todo.completed === true,
+                createdAt: typeof todo.createdAt === "number" ? todo.createdAt : Date.now()
+            };
+        });
     }
 
     /**
@@ -95,6 +113,7 @@
 
     var DEFAULT_PREFS = {
         theme:      "light",     // light / dark / gradient
+        gradientColors: ["#6366f1", "#ec4899"], // 自定义渐变的两端颜色
         animType:   "strike",    // strike / marker / cloud
         sound:      false,       // 是否开启音效
         markerColor: ""          // 马克笔划线颜色；空串 = 跟随主题 --success
@@ -105,7 +124,17 @@
      */
     function getPrefs() {
         var saved = readRaw(KEYS.PREFS, {});
-        return Object.assign({}, DEFAULT_PREFS, saved);
+        saved = saved && typeof saved === "object" ? saved : {};
+        return {
+            theme: saved.theme === "custom" ? "gradient" : ["light", "dark", "gradient"].indexOf(saved.theme) !== -1 ? saved.theme : DEFAULT_PREFS.theme,
+            gradientColors: [0, 1].map(function (index) {
+                var color = Array.isArray(saved.gradientColors) ? saved.gradientColors[index] : index === 0 ? saved.customColor : null;
+                return typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : DEFAULT_PREFS.gradientColors[index];
+            }),
+            animType: typeof saved.animType === "string" ? saved.animType : DEFAULT_PREFS.animType,
+            sound: saved.sound === true,
+            markerColor: typeof saved.markerColor === "string" && /^#[0-9a-f]{6}$/i.test(saved.markerColor) ? saved.markerColor : ""
+        };
     }
 
     /**

@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%236366f1%27/%3E%3Cpath d=%27M17 33l10 10 22-24%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E">
     <title>酷炫动画待办清单 · Vita Check</title>
-    <link rel="stylesheet" href="css/themes.css?v=3">
-    <link rel="stylesheet" href="css/style.css?v=3">
-    <link rel="stylesheet" href="css/animations.css?v=3">
+    <link rel="stylesheet" href="css/themes.css?v=6">
+    <link rel="stylesheet" href="css/style.css?v=6">
+    <link rel="stylesheet" href="css/animations.css?v=6">
 </head>
 <body>
     <!-- 右上角浮动工具（边缘化、弱化显示） -->
@@ -29,6 +30,11 @@
 
         <!-- 待办列表（视觉主角，无边框无背景） -->
         <section class="todo-list-section">
+            <nav class="filter-tabs" aria-label="待办筛选">
+                <button class="filter-tab active" data-filter="all" aria-pressed="true">全部</button>
+                <button class="filter-tab" data-filter="active" aria-pressed="false">未完成</button>
+                <button class="filter-tab" data-filter="completed" aria-pressed="false">已完成</button>
+            </nav>
             <ul id="todo-list" class="todo-list" aria-live="polite"></ul>
 
             <!-- 空状态 -->
@@ -50,18 +56,19 @@
                     maxlength="120"
                     aria-label="输入待办内容"
                 >
+                <button class="add-btn" type="submit">添加</button>
             </form>
         </section>
 
         <!-- 底部（弱化说明） -->
         <footer class="app-footer">
-            <span class="hint">双击文字编辑 · 点击圆圈或文字完成</span>
+            <span class="hint">双击 / F2 编辑 · 点击圆圈或文字完成</span>
             <button id="clear-completed" class="clear-btn" title="清除所有已完成项">清除已完成</button>
         </footer>
     </main>
 
     <!-- 设置面板 -->
-    <aside class="settings-panel" id="settings-panel" aria-hidden="true" aria-label="设置面板">
+    <aside class="settings-panel" id="settings-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-label="设置面板" inert>
         <div class="settings-header">
             <h2>设置</h2>
             <button id="close-settings" class="icon-btn" aria-label="关闭设置">✕</button>
@@ -92,7 +99,16 @@
                 <div class="theme-options" id="theme-options">
                     <button class="theme-option" data-theme="light">☀️ 亮色</button>
                     <button class="theme-option" data-theme="dark">🌙 暗色</button>
-                    <button class="theme-option" data-theme="gradient">🌈 渐变</button>
+                    <button class="theme-option" data-theme="gradient" title="自定义渐变颜色">🌈 渐变</button>
+                </div>
+                <div class="custom-theme-controls" id="custom-theme-controls" hidden>
+                    <label for="theme-color-picker">起始颜色</label>
+                    <input type="color" id="theme-color-picker" value="#6366f1">
+                    <output id="theme-color-value" for="theme-color-picker">#6366f1</output>
+                    <label for="theme-color-end-picker">结束颜色</label>
+                    <input type="color" id="theme-color-end-picker" value="#ec4899">
+                    <output id="theme-color-end-value" for="theme-color-end-picker">#ec4899</output>
+                    <p>渐变实时预览，配色自动保存</p>
                 </div>
             </div>
 

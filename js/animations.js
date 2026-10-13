@@ -1,147 +1,102 @@
-/* ========================================================================
-   animations.js —— 动画控制与切换逻辑
-   职责：
-     1. 维护 2 种划掉动画的元信息（供设置面板渲染）
-     2. 给待办项应用/切换动画类名
-     3. +1 成就飘字、Combo 连击
-     4. 云朵庆贺特效（独立庆祝开关）
-   暴露全局对象：window.Animations
-   ====================================================================== */
-
+/* 动画注册、完成反馈和预览共用同一套实现。 */
 (function (global) {
     "use strict";
 
-    /* ==================================================================
-       一、动画类型注册表
-       ================================================================== */
-    var ANIM_TYPES = [
-        { id: "strike", icon: "➖", name: "经典删除线", desc: "红线穿过文字" },
-        { id: "marker", icon: "🖊️", name: "马克笔涂划", desc: "倾斜荧光笔划过" }
+    var TYPES = [
+        { id: "strike", icon: "➖", name: "经典删除线", desc: "红线从左向右划过" },
+        { id: "ink", icon: "💧", name: "墨水晕染", desc: "墨滴扩散，文字融入墨迹" },
+        { id: "shatter", icon: "💎", name: "碎裂消散", desc: "文字碎片向四周飞散" },
+        { id: "lightning", icon: "⚡", name: "闪电划过", desc: "一道电光划过，留下完成标记" },
+        { id: "fold", icon: "📄", name: "折叠收起", desc: "任务像纸张一样折起，再归入完成态" },
+        { id: "particle", icon: "🎆", name: "粒子爆炸", desc: "文字化作彩色粒子散开" },
+        { id: "marker", icon: "🖊️", name: "马克笔涂划", desc: "可自定义颜色的荧光笔" },
+        { id: "cloud", icon: "☁️", name: "云朵庆贺", desc: "小云朵升起，留下完成标记" }
     ];
+    var comboCount = 0;
+    var comboTimer;
+    var colors = ["#818cf8", "#f472b6", "#fbbf24", "#34d399", "#60a5fa"];
 
-    // 所有动画类名（切换时需先移除这些）
-    var ALL_CLASSES = ANIM_TYPES.map(function (t) {
-        return "anim-" + t.id;
-    });
-
-    /**
-     * 为指定 todo-text 元素应用动画类
-     * @param {HTMLElement} textEl - .todo-text 元素
-     * @param {String} type - 动画 id
-     */
-    function applyAnimClass(textEl, type) {
-        if (!textEl) { return; }
-        ALL_CLASSES.forEach(function (cls) { textEl.classList.remove(cls); });
-        textEl.classList.add("anim-" + type);
+    function reducedMotion() {
+        return global.matchMedia("(prefers-reduced-motion: reduce)").matches;
     }
 
-    /* ==================================================================
-       二、+1 成就飘字 / Combo 连击
-       ================================================================== */
+    function applyAnimClass(el, type) {
+        TYPES.forEach(function (t) { el.classList.remove("anim-" + t.id); });
+        el.classList.add("anim-" + type);
+    }
 
-    var comboCount = 0;
-    var comboTimer = null;
+    function clearEffect(node) {
+        if (node._effectTimer) { clearTimeout(node._effectTimer); }
+        node.classList.remove("animating");
+        node.querySelectorAll(".effect-layer").forEach(function (el) { el.remove(); });
+    }
 
-    /**
-     * 弹出 +1 飘字；连续调用会累计 Combo 计数
-     */
+    function complete(node, type) {
+        clearEffect(node);
+        if (reducedMotion()) { return; }
+        node.classList.add("animating");
+        var text = node.querySelector(".todo-text");
+        var content = node.querySelector(".text");
+        if (!text || !content) { return; }
+        if (["shatter", "particle", "cloud"].indexOf(type) !== -1) {
+            var layer = document.createElement("span");
+            layer.className = "effect-layer effect-" + type;
+            layer.setAttribute("aria-hidden", "true");
+            var letters = Array.from(content.textContent);
+            var count = type === "particle" ? 24 : type === "cloud" ? 4 : Math.min(letters.length, 40);
+            for (var i = 0; i < count; i++) {
+                var piece = document.createElement("span");
+                piece.className = "effect-piece";
+                piece.textContent = type === "shatter" ? letters[i] : type === "cloud" ? "☁" : "";
+                piece.style.left = ((i + 0.5) / count * 95) + "%";
+                piece.style.setProperty("--dx", (Math.random() * 150 - 75) + "px");
+                piece.style.setProperty("--dy", (-35 - Math.random() * 100) + "px");
+                piece.style.setProperty("--turn", (Math.random() * 240 - 120) + "deg");
+                piece.style.setProperty("--delay", (Math.random() * 0.12) + "s");
+                piece.style.setProperty("--piece-color", colors[i % colors.length]);
+                layer.appendChild(piece);
+            }
+            text.appendChild(layer);
+        }
+        node._effectTimer = setTimeout(function () { clearEffect(node); }, 1100);
+    }
+
     function popCombo() {
         comboCount += 1;
-
-        // 飘字 DOM
-        var popup = document.createElement("div");
-        popup.className = "combo-popup";
-        if (comboCount >= 3) { popup.classList.add("big"); }
-        popup.textContent = comboCount === 1
-            ? "+1"
-            : comboCount + " COMBO!";
-        // 随机水平偏移，避免叠加
-        popup.style.right = (24 + Math.random() * 60) + "px";
-        popup.style.top = (80 + Math.random() * 30) + "px";
-        document.body.appendChild(popup);
-        setTimeout(function () {
-            if (popup.parentNode) { popup.parentNode.removeChild(popup); }
-        }, 1200);
-
-        // 连击窗口：1.5s 内继续完成视为连击
-        if (comboTimer) { clearTimeout(comboTimer); }
-        comboTimer = setTimeout(function () {
-            comboCount = 0;
-            comboTimer = null;
-        }, 1500);
-    }
-
-    /* ==================================================================
-       三、云朵庆贺特效（独立庆祝开关，不占划掉动画位）
-       ================================================================== */
-
-    /**
-     * 完成待办时，在词的位置飘出几朵小云（body 层 fixed，不影响划线/飞行）
-     * @param {HTMLElement} node - 被完成的词元素（仅用于取坐标）
-     */
-    function cloudPuffsAt(node) {
-        if (!node) { return; }
-        var rect = node.getBoundingClientRect();
-        var cx = rect.left + rect.width / 2;
-        var cy = rect.top + rect.height / 2;
-        var count = 4;
-        for (var i = 0; i < count; i++) {
-            var puff = document.createElement("span");
-            puff.className = "cloud-puff";
-            puff.style.left = (cx + Math.random() * 60 - 30) + "px";
-            puff.style.top = (cy - 8 + Math.random() * 16) + "px";
-            puff.style.setProperty("--delay", (i * 0.12) + "s");
-            puff.style.setProperty("--drift", (Math.random() * 40 - 20) + "px");
-            document.body.appendChild(puff);
-            (function (el) {
-                setTimeout(function () {
-                    if (el.parentNode) { el.parentNode.removeChild(el); }
-                }, 1000);
-            })(puff);
+        if (!reducedMotion()) {
+            var popup = document.createElement("div");
+            popup.className = "combo-popup" + (comboCount >= 3 ? " big" : "");
+            popup.textContent = comboCount === 1 ? "+1" : comboCount + " COMBO!";
+            document.body.appendChild(popup);
+            setTimeout(function () { popup.remove(); }, 1200);
         }
+        clearTimeout(comboTimer);
+        comboTimer = setTimeout(function () { comboCount = 0; }, 1500);
     }
 
-    /* ==================================================================
-       四、预览动画（设置面板）
-       ================================================================== */
-
-    /**
-     * 在设置面板内创建一行预览文字，演示当前动画效果
-     * @param {HTMLElement} container - 容器
-     * @param {String} type - 动画 id
-     */
     function previewIn(container, type) {
-        // 清掉旧的预览
         var old = container.querySelector(".preview-line");
-        if (old) { old.parentNode.removeChild(old); }
-
+        if (old) { clearEffect(old); old.remove(); }
         var line = document.createElement("div");
-        line.className = "preview-line todo-text";
-        line.textContent = "点击圆圈，预览划掉效果";
-        applyAnimClass(line, type);
+        line.className = "preview-line todo-item";
+        line.innerHTML = '<span class="todo-text"><span class="text-wrap"><span class="text">完成一件小事，也值得庆祝</span><span class="strike-through"></span></span></span>';
+        applyAnimClass(line.querySelector(".todo-text"), type);
         container.appendChild(line);
-
-        // 触发完成态
-        // 用一个伪父级类承载 .completed
         setTimeout(function () {
+            if (!line.isConnected) { return; }
             line.classList.add("completed");
-        }, 60);
-
-        // 1.5s 后移除
-        setTimeout(function () {
-            if (line.parentNode) { line.parentNode.removeChild(line); }
-        }, 1800);
+            line.querySelector(".strike-through").classList.add("active");
+            complete(line, type);
+        }, 100);
+        setTimeout(function () { clearEffect(line); line.remove(); }, 2400);
     }
 
-    /* ==================================================================
-       导出
-       ================================================================== */
     global.Animations = {
-        TYPES: ANIM_TYPES,
+        TYPES: TYPES,
         applyAnimClass: applyAnimClass,
+        complete: complete,
+        clearEffect: clearEffect,
         popCombo: popCombo,
-        cloudPuffsAt: cloudPuffsAt,
         previewIn: previewIn
     };
-
 })(window);

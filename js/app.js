@@ -5,7 +5,7 @@
      2. 增删改查、筛选、统计
      3. 渲染与 DOM 事件
      4. 主题、动画风格、音效的偏好应用
-     5. 完成时的庆祝反馈编排（+1 / 礼花 / Combo）
+     5. 完成时的庆祝反馈编排（+1 / Combo）
    依赖：window.Storage、window.Animations
    ====================================================================== */
 
@@ -17,6 +17,7 @@
        ================================================================== */
     var state = {
         todos: [],                 // {id, text, completed, createdAt}
+        filter: "all",
         prefs: Storage.getPrefs()  // {theme, animType, sound}
     };
 
@@ -46,7 +47,12 @@
         soundToggle:    document.getElementById("sound-toggle"),
         resetData:      document.getElementById("reset-data"),
         markerColors:   document.getElementById("marker-colors"),
-        markerColorPicker: document.getElementById("marker-color-picker")
+        markerColorPicker: document.getElementById("marker-color-picker"),
+        themeColorPicker: document.getElementById("theme-color-picker"),
+        themeColorValue: document.getElementById("theme-color-value"),
+        themeColorEndPicker: document.getElementById("theme-color-end-picker"),
+        themeColorEndValue: document.getElementById("theme-color-end-value"),
+        customThemeControls: document.getElementById("custom-theme-controls")
     };
 
     /* ==================================================================
@@ -66,6 +72,7 @@
     function showToast(msg) {
         var toast = document.createElement("div");
         toast.className = "toast";
+        toast.setAttribute("role", "status");
         toast.textContent = msg;
         document.body.appendChild(toast);
         // 触发显示
@@ -151,41 +158,49 @@
                 strike.classList.toggle("active", todo.completed);
             }
             var cb = node.querySelector(".todo-checkbox");
-            if (cb) { cb.setAttribute("aria-checked", todo.completed); }
+            if (cb) {
+                cb.setAttribute("aria-checked", todo.completed);
+                cb.setAttribute("aria-label", (todo.completed ? "恢复待办：" : "完成待办：") + todo.text);
+            }
         }
         // 仅刷新统计（不重渲染列表）
         renderStats();
+        refreshFilteredLater();
 
         if (todo.completed) {
             // 完成反馈：+1 飘字 + 音效；云朵动画额外飘出云朵点缀（文字保留）
             Animations.popCombo();
             playCompleteSound();
-            if (state.prefs.animType === "cloud" && node) {
-                Animations.cloudPuffsAt(node);
+            if (node) { Animations.complete(node, state.prefs.animType); }
+            if (state.todos.length && state.todos.every(function (t) { return t.completed; })) {
+                showToast("全部完成！今天的你很棒 ✨");
             }
+        } else if (node) {
+            Animations.clearEffect(node);
         }
+    }
+
+    // 完成反馈结束后，归入完成区或更新筛选视图。
+    function refreshFilteredLater() {
+        setTimeout(function () {
+            if (!dom.list.querySelector(".todo-edit-input")) { render(); }
+        }, 1100);
     }
 
     function deleteTodo(id) {
         var node = dom.list.querySelector('[data-id="' + id + '"]');
         if (!node) { return; }
 
-        // 先播退场动画，动画结束再删数据
+        // 数据立即删除，视觉退场独立完成，避免重绘打断删除。
+        state.todos = state.todos.filter(function (t) { return t.id !== id; });
+        persist();
+        renderStats();
+        Animations.clearEffect(node);
         node.classList.add("leaving");
-        node.addEventListener("animationend", function handler() {
-            node.removeEventListener("animationend", handler);
-            state.todos = state.todos.filter(function (t) { return t.id !== id; });
-            persist();
-            render();
-        });
-        // 兜底：动画异常时 600ms 后强制移除
         setTimeout(function () {
-            if (node.parentNode) {
-                state.todos = state.todos.filter(function (t) { return t.id !== id; });
-                persist();
-                render();
-            }
-        }, 600);
+            if (dom.list.querySelector(".todo-edit-input")) { node.remove(); }
+            else { render(); }
+        }, 450);
     }
 
     function editTodo(id, newText) {
@@ -208,14 +223,17 @@
             showToast("没有已完成的项");
             return;
         }
-        // 给所有已完成项加退场动画
         var nodes = dom.list.querySelectorAll(".todo-item.completed");
-        nodes.forEach(function (n) { n.classList.add("leaving"); });
-
+        nodes.forEach(function (n) {
+            Animations.clearEffect(n);
+            n.classList.add("leaving");
+        });
+        state.todos = state.todos.filter(function (t) { return !t.completed; });
+        persist();
+        renderStats();
         setTimeout(function () {
-            state.todos = state.todos.filter(function (t) { return !t.completed; });
-            persist();
-            render();
+            if (dom.list.querySelector(".todo-edit-input")) { nodes.forEach(function (n) { n.remove(); }); }
+            else { render(); }
             showToast("已清除全部已完成项");
         }, 450);
     }
@@ -229,23 +247,44 @@
        ================================================================== */
 
     function getFiltered() {
-        // 仅展示全部状态（筛选 tab 已移除）
-        return state.todos.slice();
+        return state.todos.filter(function (todo) {
+            return state.filter === "all" || (state.filter === "completed" ? todo.completed : !todo.completed);
+        }).sort(function (a, b) { return Number(a.completed) - Number(b.completed); });
     }
 
     function render() {
+        var focused = document.activeElement;
+        var focusedItem = focused && focused.closest(".todo-item");
+        var focusId = focusedItem && focusedItem.dataset.id;
+        var focusClass = focused && focused.classList.contains("todo-checkbox") ? ".todo-checkbox" : ".delete-btn";
         var list = getFiltered();
         // 清空
+        dom.list.querySelectorAll(".todo-item").forEach(Animations.clearEffect);
         dom.list.innerHTML = "";
 
+        var completedHeading = false;
         list.forEach(function (todo) {
+            if (state.filter === "all" && todo.completed && !completedHeading) {
+                var heading = document.createElement("li");
+                heading.className = "completed-heading";
+                heading.textContent = "已完成";
+                dom.list.appendChild(heading);
+                completedHeading = true;
+            }
             dom.list.appendChild(createTodoNode(todo));
         });
 
         // 空状态
         dom.emptyState.classList.toggle("hidden", list.length > 0);
 
+        dom.emptyState.querySelector("p").textContent = state.filter === "completed"
+            ? "还没有已完成的任务，完成一件小事吧" : state.filter === "active"
+            ? "没有未完成的任务，休息一下吧" : "还没有待办，添加第一条吧";
         renderStats();
+        if (focusId) {
+            var replacement = dom.list.querySelector('[data-id="' + focusId + '"] ' + focusClass);
+            (replacement || dom.input).focus();
+        }
     }
 
     function createTodoNode(todo) {
@@ -254,11 +293,13 @@
         li.dataset.id = todo.id;
 
         // 复选框
-        var checkbox = document.createElement("div");
+        var checkbox = document.createElement("button");
+        checkbox.type = "button";
         checkbox.className = "todo-checkbox";
         checkbox.setAttribute("role", "checkbox");
         checkbox.setAttribute("aria-checked", todo.completed);
-        checkbox.title = "标记完成";
+        checkbox.setAttribute("aria-label", (todo.completed ? "恢复待办：" : "完成待办：") + todo.text);
+        checkbox.title = "切换完成状态；F2 编辑";
 
         // 文本（承载划掉动画类）—— 用 text-wrap 包裹，
         // 内部含 .text（文字）和 .strike-through（独立删除线 span，仿案例）
@@ -297,10 +338,17 @@
         checkbox.addEventListener("click", function () {
             toggleTodo(todo.id);
         });
+        var clickTimer;
+        checkbox.addEventListener("keydown", function (e) {
+            if (e.key === "F2") { e.preventDefault(); enterEditMode(li, todo); }
+        });
         text.addEventListener("click", function (e) {
-            // 编辑模式下不触发完成
             if (li.querySelector(".todo-edit-input")) { return; }
-            toggleTodo(todo.id);
+            clearTimeout(clickTimer);
+            if (e.detail > 1) { return; }
+            clickTimer = setTimeout(function () {
+                if (li.isConnected) { toggleTodo(todo.id); }
+            }, 300);
         });
         // 删除
         delBtn.addEventListener("click", function (e) {
@@ -310,6 +358,7 @@
         // 双击文字 → 编辑
         text.addEventListener("dblclick", function (e) {
             e.stopPropagation();
+            clearTimeout(clickTimer);
             enterEditMode(li, todo);
         });
 
@@ -326,6 +375,7 @@
         input.type = "text";
         input.value = todo.text;
         input.maxLength = 120;
+        input.setAttribute("aria-label", "编辑待办内容");
 
         // 替换 text-wrap（保留 .todo-text 这个动画类容器）
         todoText.replaceChild(input, oldWrap);
@@ -334,13 +384,17 @@
         var len = input.value.length;
         input.setSelectionRange(len, len);
 
+        var saved = false;
         function save() {
-            if (!input.parentNode) { return; }   // 已被替换
+            if (saved || !input.parentNode) { return; }   // 已被替换
+            saved = true;
             editTodo(todo.id, input.value);
+            dom.input.focus();
         }
         input.addEventListener("blur", save);
         input.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") { input.blur(); }
+            if (e.isComposing) { return; }
+            if (e.key === "Enter") { e.preventDefault(); input.blur(); }
             else if (e.key === "Escape") {         // Esc 取消
                 input.value = todo.text;
                 input.blur();
@@ -405,9 +459,8 @@
     function buildThemeOptions() {
         dom.themeOptions.querySelectorAll(".theme-option").forEach(function (b) {
             b.classList.toggle("active", b.dataset.theme === state.prefs.theme);
-            b.addEventListener("click", function () {
-                setTheme(b.dataset.theme);
-            });
+            b.setAttribute("aria-pressed", b.dataset.theme === state.prefs.theme);
+            b.onclick = function () { setTheme(b.dataset.theme); };
         });
     }
 
@@ -415,9 +468,37 @@
         state.prefs.theme = theme;
         Storage.savePrefs({ theme: theme });
         document.documentElement.setAttribute("data-theme", theme);
+        applyGradientTheme();
         dom.themeOptions.querySelectorAll(".theme-option").forEach(function (b) {
             b.classList.toggle("active", b.dataset.theme === theme);
         });
+    }
+
+    function applyGradientTheme() {
+        var colors = state.prefs.gradientColors;
+        var rgb = [1, 3, 5].map(function (offset) {
+            return Math.round((parseInt(colors[0].slice(offset, offset + 2), 16) + parseInt(colors[1].slice(offset, offset + 2), 16)) / 2);
+        });
+        var linear = rgb.map(function (channel) {
+            channel /= 255;
+            return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+        });
+        var luminance = linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+        var foreground = luminance > 0.179 ? "0, 0, 0" : "255, 255, 255";
+        var panel = rgb.map(function (channel) {
+            return Math.round(channel * 0.88 + (luminance > 0.179 ? 255 : 0) * 0.12);
+        });
+        var style = document.documentElement.style;
+        style.setProperty("--custom-bg", "rgb(" + rgb.join(", ") + ")");
+        style.setProperty("--gradient-start", colors[0]);
+        style.setProperty("--gradient-end", colors[1]);
+        style.setProperty("--custom-fg", foreground);
+        style.setProperty("--custom-panel", "rgb(" + panel.join(", ") + ")");
+        dom.themeColorPicker.value = colors[0];
+        dom.themeColorValue.textContent = colors[0].toUpperCase();
+        dom.themeColorEndPicker.value = colors[1];
+        dom.themeColorEndValue.textContent = colors[1].toUpperCase();
+        dom.customThemeControls.hidden = state.prefs.theme !== "gradient";
     }
 
     /* ---------------------- 马克笔颜色 ---------------------- */
@@ -487,7 +568,9 @@
     function refreshMarkerColorState() {
         var cur = state.prefs.markerColor || "";
         dom.markerColors.querySelectorAll(".color-swatch").forEach(function (sw) {
-            sw.classList.toggle("active", (sw.dataset.color || "") === cur);
+            var custom = sw.classList.contains("custom");
+            sw.classList.toggle("active", custom ? !!cur && MARKER_COLORS.indexOf(cur) === -1 : sw.dataset.color === cur);
+            sw.setAttribute("aria-pressed", sw.classList.contains("active"));
         });
     }
 
@@ -495,19 +578,28 @@
         document.documentElement.setAttribute("data-theme", state.prefs.theme);
         dom.soundToggle.checked = !!state.prefs.sound;
         applyMarkerColorVar();
+        applyGradientTheme();
     }
 
     /* ---------------------- 面板开关 ---------------------- */
 
     function openSettings() {
+        dom.settingsPanel.inert = false;
         dom.settingsPanel.classList.add("active");
         dom.settingsOverlay.classList.add("active");
         dom.settingsPanel.setAttribute("aria-hidden", "false");
+        dom.closeSettings.focus();
+        dom.form.closest("main").inert = true;
+        document.querySelector(".floating-tools").inert = true;
     }
     function closeSettings() {
         dom.settingsPanel.classList.remove("active");
         dom.settingsOverlay.classList.remove("active");
+        dom.form.closest("main").inert = false;
+        document.querySelector(".floating-tools").inert = false;
+        dom.settingsBtn.focus();
         dom.settingsPanel.setAttribute("aria-hidden", "true");
+        dom.settingsPanel.inert = true;
     }
 
     /* ==================================================================
@@ -530,6 +622,18 @@
             dom.input.focus();
         });
 
+        document.querySelectorAll(".filter-tab").forEach(function (button) {
+            button.addEventListener("click", function () {
+                state.filter = button.dataset.filter;
+                document.querySelectorAll(".filter-tab").forEach(function (tab) {
+                    var selected = tab.dataset.filter === state.filter;
+                    tab.classList.toggle("active", selected);
+                    tab.setAttribute("aria-pressed", selected);
+                });
+                render();
+            });
+        });
+
         // 清除已完成
         dom.clearCompleted.addEventListener("click", clearCompleted);
 
@@ -547,6 +651,13 @@
             state.prefs.sound = dom.soundToggle.checked;
             Storage.savePrefs({ sound: dom.soundToggle.checked });
             if (dom.soundToggle.checked) { playCompleteSound(); }
+        });
+        [dom.themeColorPicker, dom.themeColorEndPicker].forEach(function (picker, index) {
+            picker.addEventListener("input", function () {
+                state.prefs.gradientColors[index] = picker.value;
+                Storage.savePrefs({ gradientColors: state.prefs.gradientColors.slice() });
+                applyGradientTheme();
+            });
         });
         // 自定义取色器：实时应用颜色
         dom.markerColorPicker.addEventListener("input", function () {
@@ -568,6 +679,13 @@
 
         // 键盘快捷键：Esc 关闭设置
         document.addEventListener("keydown", function (e) {
+            if (e.key === "Tab" && dom.settingsPanel.classList.contains("active")) {
+                var focusable = Array.from(dom.settingsPanel.querySelectorAll("button, input:not([tabindex='-1'])"));
+                var first = focusable[0];
+                var last = focusable[focusable.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
             if (e.key === "Escape" && dom.settingsPanel.classList.contains("active")) {
                 closeSettings();
             }
@@ -580,7 +698,7 @@
         var idx = order.indexOf(state.prefs.theme);
         var next = order[(idx + 1) % order.length];
         setTheme(next);
-        showToast("主题：" + ({ light: "亮色", dark: "暗色", gradient: "渐变" })[next]);
+        showToast("主题：" + ({ light: "亮色", dark: "暗色", gradient: "自定义渐变" })[next]);
     }
 
     /* ==================================================================
@@ -591,8 +709,14 @@
         // 加载数据
         state.todos = Storage.getTodos();
         state.prefs = Storage.getPrefs();
+        // 演示入口仅为空列表提供示例，不覆盖已有任务。
+        if (!state.todos.length && new URLSearchParams(global.location.search).get("demo") === "1") {
+            state.todos = ["写下今天最重要的一件事", "专注 25 分钟，推进手头的工作", "喝杯水，伸展一下", "打开设置，试试六种完成动画", "完成全部任务，给自己一个赞 ✨"].map(function (text) {
+                return { id: genId(), text: text, completed: false, createdAt: Date.now() };
+            });
+        }
 
-        // 旧数据可能存了已删除的动画类型，回退到默认
+        // 兼容旧数据中的动画类型
         if (!Animations.TYPES.some(function (t) { return t.id === state.prefs.animType; })) {
             state.prefs.animType = "strike";
             Storage.savePrefs({ animType: "strike" });

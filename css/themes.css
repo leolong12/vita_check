@@ -1,11 +1,11 @@
 /* ========================================================================
-   themes.css —— 主题配色变量（亮色 / 暗色 / 渐变）
+   themes.css —— 主题配色变量（亮色 / 暗色 / 自定义渐变）
    通过 <html data-theme="..."> 切换，所有样式从 CSS 变量取值
    ======================================================================== */
 
 /* ---------- 亮色主题（默认） ---------- */
 :root,
-[data-theme="light"] {
+:root[data-theme="light"] {
     --bg-primary: #f5f7fa;
     --bg-secondary: #ffffff;
     --bg-elevated: #ffffff;
@@ -44,7 +44,7 @@
 }
 
 /* ---------- 暗色主题 ---------- */
-[data-theme="dark"] {
+:root[data-theme="dark"] {
     --bg-primary: #0f172a;
     --bg-secondary: #1e293b;
     --bg-elevated: #243447;
@@ -80,55 +80,39 @@
     --strike-color: #f87171;
 }
 
-/* ---------- 渐变主题 ---------- */
-[data-theme="gradient"] {
-    --bg-primary: #1a1a2e;
-    --bg-secondary: rgba(255, 255, 255, 0.08);
-    --bg-elevated: rgba(255, 255, 255, 0.12);
-    --bg-input: rgba(255, 255, 255, 0.1);
-    --bg-hover: rgba(255, 255, 255, 0.16);
-
-    --text-primary: #ffffff;
-    --text-secondary: rgba(255, 255, 255, 0.78);
-    --text-muted: rgba(255, 255, 255, 0.55);
-    --text-on-accent: #ffffff;
-
-    --accent: #f472b6;
-    --accent-hover: #ec4899;
-    --accent-soft: rgba(244, 114, 182, 0.2);
-    --accent-glow: rgba(244, 114, 182, 0.5);
-
-    --success: #34d399;
-    --danger: #fb7185;
-    --warning: #fbbf24;
-
-    --border: rgba(255, 255, 255, 0.15);
-    --border-strong: rgba(255, 255, 255, 0.25);
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
-    --shadow-glow: 0 0 30px var(--accent-glow);
-
-    /* 动态流动渐变背景 */
-    --app-bg: transparent;
-    --app-bg-image: linear-gradient(
-        -45deg,
-        #ee7752, #e73c7e, #23a6d5, #23d5ab
-    );
-
-    --completed-text: rgba(255, 255, 255, 0.45);
-    --strike-color: #fde047;
+/* ---------- 自定义渐变主题：两端颜色由设置注入，文字自动匹配明暗 ---------- */
+:root[data-theme="gradient"] {
+    --bg-primary: var(--custom-bg, #6366f1);
+    --bg-secondary: var(--custom-panel, #575ad4);
+    --bg-elevated: rgba(var(--custom-fg, 255, 255, 255), 0.08);
+    --bg-input: var(--bg-secondary);
+    --bg-hover: rgba(var(--custom-fg, 255, 255, 255), 0.08);
+    --text-primary: rgb(var(--custom-fg, 255, 255, 255));
+    --text-secondary: rgba(var(--custom-fg, 255, 255, 255), 0.85);
+    --text-muted: rgba(var(--custom-fg, 255, 255, 255), 0.7);
+    --text-on-accent: var(--bg-primary);
+    --accent: var(--text-primary);
+    --accent-hover: var(--text-secondary);
+    --accent-soft: rgba(var(--custom-fg, 255, 255, 255), 0.12);
+    --accent-glow: rgba(var(--custom-fg, 255, 255, 255), 0.25);
+    --success: var(--text-primary);
+    --danger: var(--text-primary);
+    --warning: var(--text-primary);
+    --border: rgba(var(--custom-fg, 255, 255, 255), 0.18);
+    --border-strong: rgba(var(--custom-fg, 255, 255, 255), 0.4);
+    --completed-text: var(--text-secondary);
+    --strike-color: var(--text-primary);
+    --app-bg: var(--bg-primary);
+    --app-bg-image: linear-gradient(-45deg, var(--gradient-start, #6366f1), var(--gradient-end, #ec4899), var(--gradient-start, #6366f1));
 }
 
-/* 渐变主题：背景动画 */
-[data-theme="gradient"] body {
+:root[data-theme="gradient"] { background-image: none; }
+:root[data-theme="gradient"] body {
+    min-height: 100vh;
     background-size: 400% 400%;
     animation: gradientShift 18s ease infinite;
 }
-
 @keyframes gradientShift {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
 }

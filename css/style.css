@@ -753,3 +753,92 @@ input:checked + .slider::before {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* 完整 demo：筛选、添加和键盘焦点。 */
+.filter-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 16px;
+}
+.filter-tab {
+    padding: 7px 14px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.filter-tab.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+.add-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    cursor: pointer;
+    font-size: 13px;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+.add-btn:hover { background: var(--accent-hover); }
+.add-btn:active { transform: scale(0.94); }
+.todo-input, .todo-text { min-width: 0; }
+.todo-edit-input { width: 100%; }
+.todo-item { transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+.todo-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.todo-item:focus-within .delete-btn { opacity: 0.65; }
+button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+}
+.switch:focus-within .slider { outline: 2px solid var(--accent); outline-offset: 4px; }
+.anim-option { min-height: 85px; }
+.preview-line { width: 100%; }
+@media (max-width: 600px) {
+    .app-footer { gap: 10px; align-items: flex-start; }
+    .hint { line-height: 1.6; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .todo-item:hover { transform: none; }
+}
+.completed-heading {
+    padding: 24px 4px 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+}
+
+.custom-theme-controls {
+    display: grid;
+    grid-template-columns: 1fr 44px auto;
+    gap: 10px;
+    align-items: center;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.custom-theme-controls[hidden] { display: none; }
+#theme-color-picker, #theme-color-end-picker {
+    width: 44px;
+    height: 34px;
+    padding: 3px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--bg-elevated);
+    cursor: pointer;
+}
+.custom-theme-controls output { font-family: monospace; }
+.custom-theme-controls p {
+    grid-column: 1 / -1;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin: 0;
+}
+
+:root[data-theme="gradient"] .danger-btn:hover { color: var(--text-on-accent); }
+:root[data-theme="gradient"] input:checked + .slider::before { background: var(--bg-primary); }
